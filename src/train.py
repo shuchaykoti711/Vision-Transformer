@@ -1,5 +1,4 @@
 import torch
-from torchmetrics import Accuracy
 def train(model,
            train_loader,
            test_loader,
