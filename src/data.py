@@ -1,65 +1,46 @@
-import requests
-import zipfile
+from __future__ import annotations
+
 from pathlib import Path
+
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 
-
-def download_and_extract_dataset():
-    data_path = Path("data")
-    image_path = data_path / "pizza_steak_sushi"
-    zip_path = data_path / "pizza_steak_sushi.zip"
-
-    if image_path.is_dir():
-        print(f"{image_path} already exists")
-        return image_path
-
-    data_path.mkdir(parents=True, exist_ok=True)
-    with open(zip_path, "wb") as f:
-        request = requests.get(
-            "https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip",
-            timeout=30,
-        )
-        request.raise_for_status()
-        f.write(request.content)
-
-    with zipfile.ZipFile(zip_path) as k:
-        k.extractall(data_path)
-
-    return image_path
+CIFAR100_MEAN = (0.5071, 0.4865, 0.4409)
+CIFAR100_STD = (0.2673, 0.2564, 0.2762)
 
 
-def batch_data(image_path):
-    data_transform = transforms.Compose([
-        transforms.Resize(size=(64, 64)),
+def build_transforms(image_size: int) -> tuple[transforms.Compose, transforms.Compose]:
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(image_size, padding=4),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        ),
+        transforms.Normalize(mean=CIFAR100_MEAN, std=CIFAR100_STD),
     ])
-    train_dir = image_path / "train"
-    test_dir = image_path / "test"
-    train_data = datasets.ImageFolder(
-        root=train_dir,
-        transform=data_transform,
-        target_transform=None,
+    test_transform = transforms.Compose([
+        transforms.Resize((image_size, image_size)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=CIFAR100_MEAN, std=CIFAR100_STD),
+    ])
+    return train_transform, test_transform
+
+
+def batch_data(data_dir: str = "data", batch_size: int = 64,
+               num_workers: int = 2, image_size: int = 32):
+    """Return CIFAR-100 train/test dataloaders and the list of class names."""
+    data_path = Path(data_dir)
+    data_path.mkdir(parents=True, exist_ok=True)
+
+    train_transform, test_transform = build_transforms(image_size)
+
+    train_data = datasets.CIFAR100(root=data_path, train=True, download=True, transform=train_transform)
+    test_data = datasets.CIFAR100(root=data_path, train=False, download=True, transform=test_transform)
+
+    train_loader = DataLoader(
+        train_data, batch_size=batch_size, num_workers=num_workers,
+        shuffle=True, pin_memory=True,
     )
-    test_data = datasets.ImageFolder(
-        root=test_dir,
-        transform=data_transform,
-        target_transform=None,
+    test_loader = DataLoader(
+        test_data, batch_size=batch_size, num_workers=num_workers,
+        shuffle=False, pin_memory=True,
     )
-    train_dataloader = DataLoader(
-        dataset=train_data,
-        batch_size=32,
-        num_workers=0,
-        shuffle=True,
-    )
-    test_dataloader = DataLoader(
-        dataset=test_data,
-        batch_size=32,
-        num_workers=0,
-        shuffle=False,
-    )
-    return train_dataloader, test_dataloader
+    return train_loader, test_loader, train_data.classes

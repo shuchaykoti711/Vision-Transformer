@@ -7,3 +7,5 @@ data/
 *.zip
 .pytest_cache/
 .mypy_cache/
+outputs/
+checkpoints/

@@ -1,0 +1,26 @@
+seed: 42
+output_dir: outputs
+checkpoint_dir: checkpoints
+
+data:
+  data_dir: data
+  batch_size: 64
+  num_workers: 2
+  image_size: 32
+
+model:
+  color_channels: 3
+  patch_size: 4
+  embedding_dimension: 384
+  embedding_dropout: 0.1
+  num_heads: 6
+  num_layers: 7
+  mlp_size: 1536
+  mlp_dropout: 0.1
+  attention_dropout: 0.1
+  num_classes: 100
+
+training:
+  epochs: 20
+  learning_rate: 0.0003
+  weight_decay: 0.0001
